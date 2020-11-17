@@ -15579,6 +15579,6 @@ _app.PDFPrintServiceFactory.instance = {
 // send current page every 2 seconds
 setInterval(() => {
   if (parent.window) {
-    parent.window.postMessage(PDFViewerApplication.page, 'http://127.0.0.1:80')
+    parent.window.postMessage(PDFViewerApplication.page, '/')
   }
 }, 2000)
