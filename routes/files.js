@@ -2,7 +2,7 @@ const express = require('express')
 const multer = require('multer')
 const fs = require('fs')
 const path = require('path')
-const PDF = require('pdfinfo')
+const pdf = require("pdf-extraction");
 
 // MIDDLEWARES
 const authorize = require('../middlewares/authorize')
@@ -39,34 +39,36 @@ router.post('/', authorize(), upload.single('pdf'), async (req, res) => {
     return res.status(500)
   }
   
-  const pdf = PDF(path.resolve(req.file.path))
-  pdf.info((err, pdfMetadata) => {
-    if (err) handleError(err)
+  const pdfBuffer = fs.readFileSync(path.resolve(req.file.path))
 
-    const { pages, title } = pdfMetadata
+  pdf(pdfBuffer)
+    .then(data => {
 
-    // create file instance
-    const newFile = {
-      originalName: req.file.originalname,
-      path: req.file.path.replace(/\\/g, '/'),
-      niceId: lastFile ? lastFile.niceId + 1 : 1,
-      niceName: title ? title : req.file.originalname,
-      pagesRead: 0,
-      totalPages: pages,
-      metadata: {
-        ...pdfMetadata
-      },
-      ownerEmail: req.user.email
-    }
-    const fileDocument = new File(newFile)
+      // create file instance
+      const newFile = {
+        originalName: req.file.originalname,
+        path: req.file.path.replace(/\\/g, '/'),
+        niceId: lastFile ? lastFile.niceId + 1 : 1,
+        niceName: req.file.originalname,
+        pagesRead: 0,
+        totalPages: data.numpages,
+        metadata: {
+          ...data.info
+        },
+        ownerEmail: req.user.email
+      }
+      const fileDocument = new File(newFile)
 
-    // save file instance to DB
-    fileDocument.save()
-      .then(() => {
-        res.json({ message: 'success', newFile })
-      })
-      .catch(handleError)
-  })
+      // save file instance to DB
+      fileDocument.save()
+        .then(() => {
+          res.json({ message: 'success', newFile })
+        })
+        .catch(handleError)
+    })
+    .catch(err => {
+      console.error(err)
+    })
 })
 
 // GET ALL FILES
